@@ -88,7 +88,9 @@ export default class AutoLinkTitle extends Plugin {
     // If its not a URL, we return false to allow the default paste handler to take care of it.
     // Similarly, image urls don't have a meaningful <title> attribute so downloading it
     // to fetch the title is a waste of bandwidth.
-    if (!CheckIf.isUrl(clipboardText) || CheckIf.isImage(clipboardText)) {
+    var isEagleLink=CheckIf.isEaglelink(clipboardText);
+    console.log(isEagleLink);
+    if ((!CheckIf.isUrl(clipboardText)&&isEagleLink) || CheckIf.isImage(clipboardText)) {
       editor.replaceSelection(clipboardText);
       return;
     }
@@ -130,7 +132,9 @@ export default class AutoLinkTitle extends Plugin {
     // If its not a URL, we return false to allow the default paste handler to take care of it.
     // Similarly, image urls don't have a meaningful <title> attribute so downloading it
     // to fetch the title is a waste of bandwidth.
-    if (!CheckIf.isUrl(clipboardText) || CheckIf.isImage(clipboardText)) {
+    var isEagleLink=CheckIf.isEaglelink(clipboardText);
+
+    if ((!CheckIf.isUrl(clipboardText)&&!isEagleLink) || CheckIf.isImage(clipboardText)) {
       return;
     }
 
@@ -152,10 +156,51 @@ export default class AutoLinkTitle extends Plugin {
       return;
     }
 
-    // At this point we're just pasting a link in a normal fashion, fetch its title.
-    this.convertUrlToTitledLink(editor, clipboardText);
+    if(isEagleLink){
+        // At this point we're just pasting a link in a normal fashion, fetch its title.
+        this.convertEagleLinkToTitledLink(editor, clipboardText);
+
+    }else{
+      // At this point we're just pasting a link in a normal fashion, fetch its title.
+        this.convertUrlToTitledLink(editor, clipboardText);
+
+    }
+
+
+ 
     return;
   }
+
+  async convertEagleLinkToTitledLink(editor: Editor, url: string): Promise<void> {
+    // Generate a unique id for find/replace operations for the title.
+    const pasteId = `Fetching EagleLink Title#${this.createBlockHash()}`;
+
+    // Instantly paste so you don't wonder if paste is broken
+    editor.replaceSelection(`[${pasteId}](${url})`);
+
+    // Fetch title from site, replace Fetching Title with actual title
+    const title = await this.fetchEagleLinkTitle(url);
+
+    // console.log("获取到的 标题:+"+title)
+    const text = editor.getValue();
+
+    const start = text.indexOf(pasteId);
+    if (start < 0) {
+      console.log(
+        `Unable to find text "${pasteId}" in current editor, bailing out; link ${url}`
+      );
+      // const end = start + pasteId.length;
+      // const startPos = EditorExtensions.getEditorPositionFromIndex(text, start);
+      // const endPos = EditorExtensions.getEditorPositionFromIndex(text, end);
+      // editor.replaceRange("无法连接Eagle服务器", startPos, endPos);
+    } else {
+      const end = start + pasteId.length;
+      const startPos = EditorExtensions.getEditorPositionFromIndex(text, start);
+      const endPos = EditorExtensions.getEditorPositionFromIndex(text, end);
+      editor.replaceRange(title, startPos, endPos);
+    }
+  }
+
 
   async convertUrlToTitledLink(editor: Editor, url: string): Promise<void> {
     // Generate a unique id for find/replace operations for the title.
@@ -192,6 +237,55 @@ export default class AutoLinkTitle extends Plugin {
       return "Site Unreachable";
     }
   }
+
+ 
+  
+
+
+  async fetchEagleLinkTitle(url: string): Promise<string> {
+      var  title = "ealge 默认标题 ";
+      const matches = url.match(DEFAULT_SETTINGS.eagleRegex);
+      const id = matches.groups.id;
+      const linkType = matches.groups.type;
+      var urlItem="http://localhost:41595/api/item/info?id="+id;
+      //var urlLib="http://localhost:41595/api/folder/list";
+
+      if(linkType=="item"){
+        await fetch(urlItem, {  method: 'GET', redirect: 'follow'}).then((response) => {
+          if (response.ok) {
+            return response.json();
+          }
+        }).then((responseJson) => {
+          // console.log(responseJson);
+          title=responseJson.data.name+"."+responseJson.data.ext+"|Tag:"+responseJson.data.tags;
+          // console.log("data: "+title);
+        })
+        .catch((error) => {
+          console.log(error);
+          title= "Eagle 查找失败!";
+        });
+
+      }else{
+        await fetch(urlItem, {  method: 'GET', redirect: 'follow'}).then((response) => {
+          if (response.ok) {
+            return response.json();
+          }
+        }).then((responseJson) => {
+          // console.log(responseJson);
+          title=responseJson.data.name;
+          // console.log("data: "+title);
+        })
+        .catch((error) => {
+          console.log(error);
+          title= "Eagle 查找失败!";
+        });
+
+      }
+      // console.log("return:"+title);
+      return title;
+  }
+
+
 
   private getEditor(): Editor {
     let activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);

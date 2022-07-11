@@ -2,6 +2,7 @@ import AutoLinkTitle from "main";
 import { App, PluginSettingTab, Setting } from "obsidian";
 
 export interface AutoLinkTitleSettings {
+  eagleRegex: RegExp;
   regex: RegExp;
   lineRegex: RegExp;
   linkRegex: RegExp;
@@ -12,6 +13,8 @@ export interface AutoLinkTitleSettings {
 }
 
 export const DEFAULT_SETTINGS: AutoLinkTitleSettings = {
+  eagleRegex:
+    /eagle:\/\/(?<type>item|folder)\/(?<id>[\w]{13})/,
   regex:
     /^(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})$/i,
   lineRegex:

@@ -42,4 +42,9 @@ export class CheckIf {
     return urlRegex.test(text);
   }
 
+  public static isEaglelink(text: string): boolean {
+    let urlRegex = new RegExp(DEFAULT_SETTINGS.eagleRegex);
+    return urlRegex.test(text);
+  }
+
 }

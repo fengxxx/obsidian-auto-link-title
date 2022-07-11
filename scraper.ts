@@ -92,3 +92,9 @@ export default async function getPageTitle(url: string): Promise<string> {
     return nonElectronGetPageTitle(url);
   }
 }
+export  async function getEagleLinkTitle(url: string): Promise<string> {
+  // If we're on Desktop use the Electron scraper
+ return "eagle xxxxx";
+}
+
+
