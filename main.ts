@@ -7,6 +7,7 @@ import {
 } from "./settings";
 import { CheckIf } from "checkif";
 import getPageTitle from "scraper";
+import { timeEnd, timeLog } from "console";
 
 interface PasteFunction {
   (this: HTMLElement, ev: ClipboardEvent): void;
@@ -239,8 +240,51 @@ export default class AutoLinkTitle extends Plugin {
   }
 
  
-  
+  isGetFolderList=false;
+  folderList:object[]=new Array();;
 
+  SetFolderList(data:object){
+
+    var stackData:object=new Array(); ;
+    for (let index = 0; index < data.length; index++) {
+      stackData.push(data[index]);
+    }
+    while (stackData.length!=0) {
+      var f=stackData.pop();
+      for (let index = 0; index < f.children.length; index++) {
+        stackData.push(f.children[index]);
+      }
+      
+      this.folderList.push(f);
+      // console.log(f.name+": "+f.id);
+    }
+    // console.log(data);
+
+  }
+  public  GetFolderList(): void {
+    if(this.isGetFolderList){
+      return;
+    }
+    var urlLib="http://localhost:41595/api/folder/list";
+    fetch(urlLib, {  method: 'GET', redirect: 'follow'}).then((response) => {
+        if (response.ok) {
+          return response.json();
+        }
+        throw new Error(' Something went wrong  GetFolderList');
+      })
+      .then((responseJson) => {
+        this.SetFolderList(responseJson["data"]);
+        
+        this.isGetFolderList=true;
+
+      })
+      .catch((error) => {
+        this.isGetFolderList=false;
+        console.log("GetFolderList:"+error);
+        // console.log("server is down!!");
+      });
+    
+  }
 
   async fetchEagleLinkTitle(url: string): Promise<string> {
       var  title = "ealge 默认标题 ";
@@ -257,7 +301,19 @@ export default class AutoLinkTitle extends Plugin {
           }
         }).then((responseJson) => {
           // console.log(responseJson);
-          title=responseJson.data.name+"."+responseJson.data.ext+"|Tag:"+responseJson.data.tags;
+
+          var tag="";
+          if(responseJson.data.tags.length==0){
+            tag="";
+          }else{
+            responseJson.data.tags.forEach(ele => {
+              console.log("|#|"+ele);
+              tag=+" "+ele;
+            });
+            tag="|"+tag;
+          }
+          console.log(tag);
+          title=responseJson.data.name+"."+responseJson.data.ext+tag;
           // console.log("data: "+title);
         })
         .catch((error) => {
@@ -266,20 +322,26 @@ export default class AutoLinkTitle extends Plugin {
         });
 
       }else{
-        await fetch(urlItem, {  method: 'GET', redirect: 'follow'}).then((response) => {
-          if (response.ok) {
-            return response.json();
+        if (!this.isGetFolderList){
+          this.GetFolderList();
+    
+          title="获取文件夹列表";
+        }else{
+          var fd;
+          for (let index = 0; index < this.folderList.length; index++) {
+              var  f = this.folderList[index];
+              if(f.id==id){
+                fd=f;
+              
+              }
           }
-        }).then((responseJson) => {
-          // console.log(responseJson);
-          title=responseJson.data.name;
-          // console.log("data: "+title);
-        })
-        .catch((error) => {
-          console.log(error);
-          title= "Eagle 查找失败!";
-        });
+          if(fd){
+            title=fd.name;
 
+          }else{
+            title="找不到标题";
+          }
+        }
       }
       // console.log("return:"+title);
       return title;
